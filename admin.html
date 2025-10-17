@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการเช็คชื่อนักศึกษา - ผู้ดูแลระบบ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', 'Kanit', sans-serif; }
+        .loader { border-top-color: #3b82f6; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <div class="container mx-auto p-4 md:p-6">
+        <header class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i data-lucide="settings" class="text-blue-600 w-8 h-8"></i>
+                <h1 class="text-xl md:text-2xl font-bold text-gray-700 dark:text-gray-200">ระบบจัดการเช็คชื่อนักศึกษา - ผู้ดูแลระบบ</h1>
+            </div>
+            <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2">
+                <i data-lucide="log-out"></i>
+                <span>ออกจากระบบ</span>
+            </button>
+        </header>
+
+        <main>
+            <!-- Password Protection -->
+            <div id="login-section" class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md max-w-md mx-auto text-center">
+                <h2 class="text-2xl font-bold mb-6">เข้าสู่ระบบผู้ดูแล</h2>
+                <div class="mb-6">
+                    <label for="admin-password" class="block font-medium mb-2">รหัสผ่านผู้ดูแลระบบ</label>
+                    <input type="password" id="admin-password" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-3" placeholder="กรอกรหัสผ่าน">
+                </div>
+                <button onclick="login()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 w-full">เข้าสู่ระบบ</button>
+            </div>
+
+            <!-- Admin Content (Initially Hidden) -->
+            <div id="admin-content" class="hidden">
+                <!-- Navigation Tabs -->
+                <nav class="flex space-x-2 mb-6 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg">
+                    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="flex-1 py-2 text-center font-medium rounded-md bg-blue-600 text-white">Dashboard</button>
+                    <button onclick="switchTab('manage')" id="tab-manage" class="flex-1 py-2 text-center font-medium rounded-md text-gray-600 dark:text-gray-300">จัดการข้อมูล</button>
+                    <button onclick="switchTab('settings')" id="tab-settings" class="flex-1 py-2 text-center font-medium rounded-md text-gray-600 dark:text-gray-300">ตั้งค่าระบบ</button>
+                </nav>
+
+                <!-- Dashboard Tab -->
+                <div id="content-dashboard" class="space-y-6">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <div class="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
+                            <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-300">ภาพรวมการเช็คชื่อ</h2>
+                            <input type="date" id="dashboard-date" class="border rounded-lg p-2 bg-transparent dark:text-gray-200 dark:border-gray-600">
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 text-center">
+                            <div class="bg-blue-100 dark:bg-blue-900/50 p-4 rounded-lg">
+                                <h3 class="text-gray-600 dark:text-gray-400">นักศึกษาทั้งหมด</h3>
+                                <p id="stat-total" class="text-3xl font-bold text-blue-700 dark:text-blue-400">0</p>
+                            </div>
+                            <div class="bg-green-100 dark:bg-green-900/50 p-4 rounded-lg">
+                                <h3 class="text-gray-600 dark:text-gray-400">มาเรียน</h3>
+                                <p id="stat-present" class="text-3xl font-bold text-green-700 dark:text-green-400">0</p>
+                            </div>
+                            <div class="bg-yellow-100 dark:bg-yellow-900/50 p-4 rounded-lg">
+                                <h3 class="text-gray-600 dark:text-gray-400">มาสาย</h3>
+                                <p id="stat-late" class="text-3xl font-bold text-yellow-700 dark:text-yellow-400">0</p>
+                            </div>
+                            <div class="bg-red-100 dark:bg-red-900/50 p-4 rounded-lg">
+                                <h3 class="text-gray-600 dark:text-gray-400">ขาด/ลา</h3>
+                                <p id="stat-absent" class="text-3xl font-bold text-red-700 dark:text-red-400">0</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                                <h3 class="font-semibold mb-4 text-center">สรุปการเข้าเรียน</h3>
+                                <canvas id="attendance-pie-chart"></canvas>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                                <h3 class="font-semibold mb-4 text-center">จำนวนการเช็คชื่อรายชั่วโมง</h3>
+                                <canvas id="attendance-bar-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h3 class="font-semibold mb-4">รายชื่อนักศึกษา</h3>
+                        <div id="student-roster-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+                        <div id="roster-loading" class="text-center py-8">
+                            <div class="loader w-12 h-12 rounded-full border-4 border-gray-200 dark:border-gray-700 mx-auto"></div>
+                            <p class="mt-4 text-gray-600 dark:text-gray-400">กำลังโหลดข้อมูลนักศึกษา...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manage Students Tab -->
+                <div id="content-manage" class="hidden">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                            <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-300">จัดการข้อมูลนักศึกษา</h2>
+                            <button onclick="exportData()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2">
+                                <i data-lucide="download"></i>
+                                <span>ส่งออกข้อมูล</span>
+                            </button>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left min-w-[600px]">
+                                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                                    <tr>
+                                        <th class="p-3">รหัสนักศึกษา</th>
+                                        <th class="p-3">ชื่อ-สกุล</th>
+                                        <th class="p-3">ชั้นปี</th>
+                                        <th class="p-3 text-center">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-table-body" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="content-settings" class="hidden">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-6">ตั้งค่าระบบ</h2>
+                        
+                        <div class="space-y-6">
+                            <!-- GAS URL Configuration -->
+                            <div>
+                                <h3 class="text-lg font-medium mb-4">ตั้งค่า Google Apps Script URL</h3>
+                                <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                        กรุณานำ URL ของ Google Apps Script Web App ที่ได้จากการ Deploy มาวางที่นี่
+                                    </p>
+                                    <label for="gas-url-input" class="block font-medium mb-2">Google Apps Script URL:</label>
+                                    <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/..." 
+                                           class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-3 mb-4">
+                                    <button onclick="saveGasUrl()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                        บันทึก URL
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- System Information -->
+                            <div>
+                                <h3 class="text-lg font-medium mb-4">ข้อมูลระบบ</h3>
+                                <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <p class="text-sm text-gray-600 dark:text-gray-400">จำนวนนักศึกษาในระบบ:</p>
+                                            <p id="student-count" class="text-lg font-semibold">0</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-gray-600 dark:text-gray-400">จำนวนบันทึกการเช็คชื่อ:</p>
+                                            <p id="attendance-count" class="text-lg font-semibold">0</p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4">
+                                        <button onclick="refreshSystemInfo()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+                                            รีเฟรชข้อมูล
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- GLOBAL STATE & CONFIG ---
+        const GAS_URL_KEY = 'gasWebAppUrl';
+        const ADMIN_PASSWORD = 'admin123'; // รหัสผ่านผู้ดูแลระบบ
+        
+        let gasWebAppUrl = localStorage.getItem(GAS_URL_KEY);
+        let students = [];
+        let attendance = [];
+        let pieChart, barChart;
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            lucide.createIcons();
+            
+            // ตั้งค่าวันที่ใน Dashboard
+            document.getElementById('dashboard-date').valueAsDate = new Date();
+            document.getElementById('dashboard-date').addEventListener('change', loadDashboardData);
+            
+            // โหลด GAS URL หากมี
+            if (gasWebAppUrl) {
+                document.getElementById('gas-url-input').value = gasWebAppUrl;
+            }
+        };
+
+        // --- LOGIN ---
+        function login() {
+            const password = document.getElementById('admin-password').value;
+            
+            if (password === ADMIN_PASSWORD) {
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('admin-content').classList.remove('hidden');
+                switchTab('dashboard');
+            } else {
+                alert('รหัสผ่านไม่ถูกต้อง');
+                document.getElementById('admin-password').value = '';
+            }
+        }
+
+        function logout() {
+            if (confirm('คุณแน่ใจว่าต้องการออกจากระบบ?')) {
+                document.getElementById('login-section').classList.remove('hidden');
+                document.getElementById('admin-content').classList.add('hidden');
+                document.getElementById('admin-password').value = '';
+            }
+        }
+
+        // --- NAVIGATION ---
+        function switchTab(tabName) {
+            // อัพเดทแท็บที่ active
+            ['dashboard', 'manage', 'settings'].forEach(name => {
+                document.getElementById(`tab-${name}`).classList.remove('bg-blue-600', 'text-white');
+                document.getElementById(`tab-${name}`).classList.add('text-gray-600', 'dark:text-gray-300');
+                document.getElementById(`content-${name}`).classList.add('hidden');
+            });
+            
+            document.getElementById(`tab-${tabName}`).classList.add('bg-blue-600', 'text-white');
+            document.getElementById(`tab-${tabName}`).classList.remove('text-gray-600', 'dark:text-gray-300');
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            
+            // โหลดข้อมูลตามแท็บ
+            if (tabName === 'dashboard') {
+                loadDashboardData();
+            } else if (tabName === 'manage') {
+                loadStudentDataForTable();
+            } else if (tabName === 'settings') {
+                refreshSystemInfo();
+            }
+        }
+
+        // --- DASHBOARD ---
+        async function loadDashboardData() {
+            // โหลดข้อมูลนักศึกษา
+            const studentResponse = await apiCall({ action: 'getStudents' });
+            if (studentResponse.success) {
+                students = studentResponse.data;
+                document.getElementById('stat-total').textContent = students.length;
+                renderStudentRoster();
+            }
+            
+            // โหลดข้อมูลการเช็คชื่อ
+            const selectedDate = document.getElementById('dashboard-date').value;
+            const attendanceResponse = await apiCall({ 
+                action: 'getAttendance',
+                date: selectedDate
+            });
+            
+            if (attendanceResponse.success) {
+                attendance = attendanceResponse.data;
+                updateDashboardStats();
+                renderCharts();
+            }
+        }
+
+        function updateDashboardStats() {
+            const presentCount = attendance.filter(record => record.status === 'มาเรียน').length;
+            const lateCount = attendance.filter(record => record.status === 'มาสาย').length;
+            const absentCount = students.length - presentCount - lateCount;
+            
+            document.getElementById('stat-present').textContent = presentCount;
+            document.getElementById('stat-late').textContent = lateCount;
+            document.getElementById('stat-absent').textContent = absentCount;
+        }
+
+        function renderCharts() {
+            renderPieChart();
+            renderBarChart();
+        }
+
+        function renderPieChart() {
+            const presentCount = attendance.filter(record => record.status === 'มาเรียน').length;
+            const lateCount = attendance.filter(record => record.status === 'มาสาย').length;
+            const absentCount = students.length - presentCount - lateCount;
+            
+            const ctx = document.getElementById('attendance-pie-chart').getContext('2d');
+            
+            if (pieChart) {
+                pieChart.destroy();
+            }
+            
+            pieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['มาเรียน', 'มาสาย', 'ขาด/ลา'],
+                    datasets: [{
+                        data: [presentCount, lateCount, absentCount],
+                        backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderBarChart() {
+            // นับจำนวนการเช็คชื่อตามชั่วโมง
+            const hourlyCounts = Array(24).fill(0);
+            
+            attendance.forEach(record => {
+                const hour = new Date(record.timestamp).getHours();
+                hourlyCounts[hour]++;
+            });
+            
+            const ctx = document.getElementById('attendance-bar-chart').getContext('2d');
+            
+            if (barChart) {
+                barChart.destroy();
+            }
+            
+            barChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                    datasets: [{
+                        label: 'จำนวนการเช็คชื่อ',
+                        data: hourlyCounts,
+                        backgroundColor: '#3B82F6',
+                        borderColor: '#2563EB',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderStudentRoster() {
+            const container = document.getElementById('student-roster-grid');
+            const loading = document.getElementById('roster-loading');
+            
+            container.innerHTML = '';
+            loading.classList.remove('hidden');
+            
+            setTimeout(() => {
+                students.forEach(student => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg text-center';
+                    
+                    card.innerHTML = `
+                        <img src="${student.imageData || 'https://placehold.co/150x150/e2e8f0/475569?text=No+Image'}" 
+                             class="w-20 h-20 rounded-full object-cover mx-auto mb-2 border-2 border-gray-300 dark:border-gray-600">
+                        <p class="font-semibold text-sm truncate">${student.name}</p>
+                        <p class="text-xs text-gray-500">${student.id}</p>
+                        <p class="text-xs text-gray-500">ปี ${student.year}</p>
+                    `;
+                    
+                    container.appendChild(card);
+                });
+                
+                loading.classList.add('hidden');
+            }, 500);
+        }
+
+        // --- MANAGE STUDENTS ---
+        async function loadStudentDataForTable() {
+            const response = await apiCall({ action: 'getStudents' });
+            
+            if (response.success) {
+                students = response.data;
+                renderStudentTable();
+            } else {
+                alert('ไม่สามารถโหลดข้อมูลนักศึกษาได้');
+            }
+        }
+
+        function renderStudentTable() {
+            const tbody = document.getElementById('student-table-body');
+            tbody.innerHTML = '';
+            
+            students.forEach(student => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700/50';
+                
+                row.innerHTML = `
+                    <td class="p-3">${student.id}</td>
+                    <td class="p-3">${student.name}</td>
+                    <td class="p-3">ปี ${student.year}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="deleteStudent('${student.id}')" class="bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900/70 px-3 py-1 rounded text-sm">
+                            ลบ
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        async function deleteStudent(studentId) {
+            if (confirm(`คุณแน่ใจว่าต้องการลบนักศึกษารหัส ${studentId}?`)) {
+                const response = await apiCall({
+                    action: 'deleteStudent',
+                    data: { id: studentId }
+                });
+                
+                if (response.success) {
+                    alert('ลบนักศึกษาเรียบร้อยแล้ว');
+                    loadStudentDataForTable();
+                    loadDashboardData(); // รีเฟรช Dashboard ด้วย
+                } else {
+                    alert('เกิดข้อผิดพลาดในการลบ: ' + (response.error || 'Unknown error'));
+                }
+            }
+        }
+
+        function exportData() {
+            // สร้าง CSV ข้อมูลนักศึกษา
+            let csvContent = "รหัสนักศึกษา,ชื่อ-สกุล,ชั้นปี\n";
+            
+            students.forEach(student => {
+                csvContent += `${student.id},${student.name},ปี ${student.year}\n`;
+            });
+            
+            // สร้างไฟล์และดาวน์โหลด
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `students_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- SETTINGS ---
+        function saveGasUrl() {
+            const url = document.getElementById('gas-url-input').value.trim();
+            
+            if (url) {
+                localStorage.setItem(GAS_URL_KEY, url);
+                gasWebAppUrl = url;
+                alert('บันทึก URL เรียบร้อยแล้ว');
+            } else {
+                alert('กรุณากรอก URL ให้ถูกต้อง');
+            }
+        }
+
+        async function refreshSystemInfo() {
+            // โหลดข้อมูลนักศึกษา
+            const studentResponse = await apiCall({ action: 'getStudents' });
+            if (studentResponse.success) {
+                document.getElementById('student-count').textContent = studentResponse.data.length;
+            }
+            
+            // โหลดข้อมูลการเช็คชื่อ
+            const attendanceResponse = await apiCall({ action: 'getAttendance' });
+            if (attendanceResponse.success) {
+                document.getElementById('attendance-count').textContent = attendanceResponse.data.length;
+            }
+        }
+
+        // --- API CALL ---
+        async function apiCall(payload) {
+            if (!gasWebAppUrl) {
+                alert('กรุณาตั้งค่า Google Apps Script URL ก่อน');
+                return { success: false, error: 'GAS URL not configured' };
+            }
+            
+            try {
+                const response = await fetch(gasWebAppUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('API Call Error:', error);
+                return { success: false, error: error.message };
+            }
+        }
+    </script>
+</body>
+</html>
